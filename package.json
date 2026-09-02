@@ -1,8 +1,31 @@
 {
   "name": "the-center",
+  "version": "0.1.0",
   "private": true,
-  "description": "The Center - Digital Life Management Platform",
+  "description": "The Center - monorepo com servidor central e cliente Windows",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @the-center/api-types && npm run build --workspace @the-center/shared && npm run build --workspace @the-center/server",
+    "test": "npm run test --workspace @the-center/server",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "format": "prettier --write .",
+    "dev": "npm run dev --workspace @the-center/server",
+    "start": "npm run start --workspace @the-center/server",
+    "db:up": "docker compose -f docker/compose.dev.yml up -d"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
   }
 }
