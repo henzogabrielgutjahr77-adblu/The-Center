@@ -4,17 +4,31 @@ node_modules/
 .pnp.js
 .pnpm-store/
 
-# Build output
+# Build outputs
 dist/
 build/
 target/
 out/
 *.tsbuildinfo
 
-# Environment
+# Environment & secrets
 .env
 .env.*
 !.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Tauri
+apps/desktop/src-tauri/target/
 
 # Logs
 logs/
@@ -28,18 +42,6 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
-# OS / editor
-.DS_Store
-Thumbs.db
-desktop.ini
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Tauri
-apps/desktop/src-tauri/target/
-
 # TypeScript
 *.tsbuildinfo
 
@@ -48,4 +50,5 @@ tmp/
 temp/
 
 # Docker volumes (local)
-docker/pgdata/package-lock.json
+docker/pgdata/
+package-lock.json
