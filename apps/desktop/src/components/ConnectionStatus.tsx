@@ -1,9 +1,9 @@
-type ConnectionState = "connecting" | "online" | "offline" | "error";
+type ConnectionState = "connecting" | "online" | "offline";
 
 interface ConnectionStatusProps {
   label: string;
   state: ConnectionState;
-  value?: string;
+  detail?: string | null;
   version?: string;
 }
 
@@ -15,29 +15,24 @@ function getDotClass(state: ConnectionState): string {
       return "status-dot offline";
     case "connecting":
       return "status-dot connecting";
-    case "error":
-      return "status-dot error";
   }
 }
 
-function getStateLabel(state: ConnectionState, value?: string): string {
-  if (value) return value;
+function getStateLabel(state: ConnectionState): string {
   switch (state) {
     case "online":
-      return "Online";
+      return "Servidor conectado";
     case "offline":
-      return "Offline";
+      return "Servidor indisponível";
     case "connecting":
-      return "Connecting...";
-    case "error":
-      return "Error";
+      return "Verificando conexão...";
   }
 }
 
 export function ConnectionStatus({
   label,
   state,
-  value,
+  detail,
   version,
 }: ConnectionStatusProps) {
   return (
@@ -45,8 +40,13 @@ export function ConnectionStatus({
       <h2>{label}</h2>
       <div className="status-row">
         <div className={getDotClass(state)} />
-        <span>{getStateLabel(state, value)}</span>
+        <span>{getStateLabel(state)}</span>
       </div>
+      {detail && (
+        <div className="status-row" style={{ marginTop: "0.5rem" }}>
+          <span className="version-value">{detail}</span>
+        </div>
+      )}
       {version && (
         <div className="status-row" style={{ marginTop: "0.5rem" }}>
           <span className="version-value">{version}</span>

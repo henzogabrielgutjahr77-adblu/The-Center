@@ -1,96 +1,54 @@
 import { useState, useEffect, useCallback } from "react";
-import { ApiClient } from "./api/client";
+import type { HealthResponse } from "@the-center/api-types";
+import { ApiError, TimeoutError, NetworkError, ValidationError } from "./lib/api/errors";
+import { checkHealth } from "./lib/api/health";
+import { getServerUrl } from "./lib/api/config";
 import { ConnectionStatus } from "./components/ConnectionStatus";
 import { Header } from "./components/Header";
 
-type ConnectionState = "connecting" | "online" | "offline" | "error";
+type ConnectionState = "connecting" | "online" | "offline";
 
-interface ServerInfo {
-  serverStatus: "ok" | "degraded" | "down" | null;
-  serverVersion: string | null;
-  connectionState: ConnectionState;
-  errorMessage: string | null;
+interface ConnectionStateInfo {
+  state: ConnectionState;
+  detail: string | null;
 }
 
-const DEFAULT_SERVER_URL = "http://localhost:3000";
-
-function loadServerUrl(): string {
-  try {
-    const stored = localStorage.getItem("the-center-server-url");
-    if (stored) return stored;
-  } catch {
-    // localStorage unavailable
-  }
-  return DEFAULT_SERVER_URL;
-}
-
-function saveServerUrl(url: string): void {
-  try {
-    localStorage.setItem("the-center-server-url", url);
-  } catch {
-    // localStorage unavailable
-  }
-}
+const initialState: ConnectionStateInfo = {
+  state: "connecting",
+  detail: null,
+};
 
 export default function App() {
-  const [serverUrl, setServerUrl] = useState(loadServerUrl);
-  const [serverInfo, setServerInfo] = useState<ServerInfo>({
-    serverStatus: null,
-    serverVersion: null,
-    connectionState: "connecting",
-    errorMessage: null,
-  });
+  const [serverUrl] = useState(getServerUrl);
+  const [serverHealth, setServerHealth] = useState<HealthResponse | null>(null);
+  const [connection, setConnection] = useState<ConnectionStateInfo>(initialState);
 
-  const connect = useCallback(async (url: string) => {
-    const client = new ApiClient(url);
-
-    setServerInfo({
-      serverStatus: null,
-      serverVersion: null,
-      connectionState: "connecting",
-      errorMessage: null,
-    });
+  const connect = useCallback(async () => {
+    setConnection(initialState);
+    setServerHealth(null);
 
     try {
-      const [health, version] = await Promise.all([
-        client.getHealth(),
-        client.getVersion(),
-      ]);
-
-      setServerInfo({
-        serverStatus: health.status,
-        serverVersion: version.version,
-        connectionState: "online",
-        errorMessage: null,
-      });
+      const health = await checkHealth(serverUrl);
+      setServerHealth(health);
+      setConnection({ state: "online", detail: null });
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Unknown connection error";
-      setServerInfo({
-        serverStatus: null,
-        serverVersion: null,
-        connectionState: "offline",
-        errorMessage: message,
-      });
+      if (err instanceof TimeoutError) {
+        setConnection({ state: "offline", detail: "Tempo de resposta excedido" });
+      } else if (err instanceof NetworkError) {
+        setConnection({ state: "offline", detail: "Falha de rede" });
+      } else if (err instanceof ValidationError) {
+        setConnection({ state: "offline", detail: "Resposta inválida do servidor" });
+      } else if (err instanceof ApiError) {
+        setConnection({ state: "offline", detail: `Erro HTTP ${err.status ?? ""}` });
+      } else {
+        setConnection({ state: "offline", detail: "Erro desconhecido" });
+      }
     }
-  }, []);
+  }, [serverUrl]);
 
   useEffect(() => {
-    connect(serverUrl);
-  }, []);
-
-  const handleUrlChange = (newUrl: string) => {
-    setServerUrl(newUrl);
-    saveServerUrl(newUrl);
-  };
-
-  const handleRetry = () => {
-    connect(serverUrl);
-  };
-
-  const handleUrlSubmit = () => {
-    connect(serverUrl);
-  };
+    connect();
+  }, [connect]);
 
   return (
     <div className="app">
@@ -99,22 +57,21 @@ export default function App() {
       <div className="status-section">
         <ConnectionStatus
           label="Status do servidor"
-          state={serverInfo.connectionState}
-          value={serverInfo.serverStatus ?? undefined}
-          version={serverInfo.serverVersion ?? undefined}
+          state={connection.state}
+          detail={connection.detail}
+          version={serverHealth?.timestamp}
         />
 
-        <ConnectionStatus
-          label="Status do cliente"
-          state="online"
-          value="online"
-        />
+        <ConnectionStatus label="Status do cliente" state="online" />
       </div>
 
-      {serverInfo.errorMessage && (
+      {connection.state === "offline" && (
         <div className="status-card">
-          <div className="error-message">{serverInfo.errorMessage}</div>
-          <button className="retry-button" onClick={handleRetry}>
+          <div className="error-message">
+            Servidor indisponível
+            {connection.detail ? ` (${connection.detail})` : ""}
+          </div>
+          <button className="retry-button" onClick={connect}>
             Tentar novamente
           </button>
         </div>
@@ -127,12 +84,7 @@ export default function App() {
           className="config-input"
           type="text"
           value={serverUrl}
-          onChange={(e) => handleUrlChange(e.target.value)}
-          onBlur={handleUrlSubmit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleUrlSubmit();
-          }}
-          placeholder="http://localhost:3000"
+          readOnly
         />
       </div>
     </div>

@@ -39,7 +39,7 @@ export interface DigitalEvent {
 
 export interface HealthResponse {
   status: "ok" | "degraded" | "down";
-  timestamp: string;
+  timestamp?: string;
 }
 
 export interface VersionResponse {
