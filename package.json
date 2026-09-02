@@ -1,0 +1,8 @@
+{
+  "name": "the-center",
+  "private": true,
+  "description": "The Center - Digital Life Management Platform",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
