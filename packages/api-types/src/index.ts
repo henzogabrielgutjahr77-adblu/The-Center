@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /**
  * DigitalEvent - a unidade normalizada de informação do The Center.
  *
@@ -15,8 +14,6 @@
  * Origem de um DigitalEvent.
  * União de valores conhecidos para type-safety. Extensível conforme integrações.
  */
-=======
->>>>>>> origin/master
 export type EventSource =
   | "gmail"
   | "instagram"
@@ -26,7 +23,6 @@ export type EventSource =
   | "server"
   | "system";
 
-<<<<<<< HEAD
 /**
  * Alias para compatibilidade com código que usa string extensível.
  * @deprecated Use EventSource para type-safety.
@@ -42,8 +38,6 @@ export type DigitalEventAccount = string;
  * Tipo normalizado do evento.
  * União de valores conhecidos para type-safety.
  */
-=======
->>>>>>> origin/master
 export type EventType =
   | "message"
   | "notification"
@@ -52,7 +46,6 @@ export type EventType =
   | "error"
   | "info";
 
-<<<<<<< HEAD
 /**
  * Alias para compatibilidade com código que usa string extensível.
  * @deprecated Use EventType para type-safety.
@@ -96,32 +89,18 @@ export interface DigitalEvent {
   /** Tipo normalizado do evento. */
   type: EventType;
   /** Autor/pessoa ou entidade que originou o conteúdo. */
-=======
-export type Importance = "low" | "medium" | "high" | "critical";
-
-export interface DigitalEvent {
-  id: string;
-  source: EventSource;
-  account: string;
-  type: EventType;
->>>>>>> origin/master
   author: {
     name: string;
     avatar?: string;
   };
-<<<<<<< HEAD
   /** Timestamp ISO-8601 de quando o evento ocorreu (UTC). */
   timestamp: string;
   /** Conteúdo principal do evento. */
-=======
-  timestamp: string;
->>>>>>> origin/master
   content: {
     title: string;
     body: string;
     url?: string;
   };
-<<<<<<< HEAD
   /** Metadados opcionais específicos da origem. */
   metadata: DigitalEventMetadata;
   /** Nível de importância. */
@@ -168,19 +147,3 @@ export interface ApiError {
   message: string;
   statusCode: number;
 }
-=======
-  metadata: Record<string, unknown>;
-  importance: Importance;
-  read: boolean;
-}
-
-export interface HealthResponse {
-  status: "ok" | "degraded" | "down";
-  timestamp: string;
-}
-
-export interface VersionResponse {
-  version: string;
-  name: string;
-}
->>>>>>> origin/master
