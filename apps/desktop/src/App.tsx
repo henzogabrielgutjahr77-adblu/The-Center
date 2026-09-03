@@ -1,27 +1,57 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { HealthResponse } from "@the-center/api-types";
 import { ApiError, TimeoutError, NetworkError, ValidationError } from "./lib/api/errors";
 import { checkHealth } from "./lib/api/health";
 import { getServerUrl } from "./lib/api/config";
-import { ConnectionStatus } from "./components/ConnectionStatus";
-import { Header } from "./components/Header";
+import { useEvents } from "./hooks/useEvents";
+import { computeUnreadCount } from "./lib/events";
+import { Sidebar, type PageId } from "./components/Sidebar";
+import { Header, type HeaderConnection } from "./components/Header";
+import { Overview } from "./pages/Overview";
+import { Activity } from "./pages/Activity";
+import { PlaceholderPage } from "./pages/PlaceholderPage";
+import type { ServerState } from "./components/ServerStatusCard";
 
-type ConnectionState = "connecting" | "online" | "offline";
+const initialState: HeaderConnection = {
+  state: "connecting",
+  detail: undefined,
+};
 
-interface ConnectionStateInfo {
-  state: ConnectionState;
-  detail: string | null;
+function connectionFromError(err: unknown): HeaderConnection {
+  if (err instanceof TimeoutError) {
+    return { state: "error", detail: "Tempo de resposta excedido" };
+  }
+  if (err instanceof NetworkError) {
+    return { state: "error", detail: "Falha de rede" };
+  }
+  if (err instanceof ValidationError) {
+    return { state: "error", detail: "Resposta inválida do servidor" };
+  }
+  if (err instanceof ApiError) {
+    return { state: "error", detail: `Erro HTTP ${err.status ?? ""}` };
+  }
+  return { state: "error", detail: "Erro desconhecido" };
 }
 
-const initialState: ConnectionStateInfo = {
-  state: "connecting",
-  detail: null,
-};
+function toServerState(connection: HeaderConnection): ServerState {
+  switch (connection.state) {
+    case "connected":
+      return "online";
+    case "connecting":
+      return "connecting";
+    default:
+      return "offline";
+  }
+}
 
 export default function App() {
   const [serverUrl] = useState(getServerUrl);
   const [serverHealth, setServerHealth] = useState<HealthResponse | null>(null);
-  const [connection, setConnection] = useState<ConnectionStateInfo>(initialState);
+  const [connection, setConnection] = useState<HeaderConnection>(initialState);
+  const [page, setPage] = useState<PageId>("overview");
+  const recentEvents = useEvents(5);
+
+  const unreadCount = computeUnreadCount(recentEvents.items);
 
   const connect = useCallback(async () => {
     setConnection(initialState);
@@ -30,19 +60,9 @@ export default function App() {
     try {
       const health = await checkHealth(serverUrl);
       setServerHealth(health);
-      setConnection({ state: "online", detail: null });
+      setConnection({ state: "connected", detail: undefined });
     } catch (err) {
-      if (err instanceof TimeoutError) {
-        setConnection({ state: "offline", detail: "Tempo de resposta excedido" });
-      } else if (err instanceof NetworkError) {
-        setConnection({ state: "offline", detail: "Falha de rede" });
-      } else if (err instanceof ValidationError) {
-        setConnection({ state: "offline", detail: "Resposta inválida do servidor" });
-      } else if (err instanceof ApiError) {
-        setConnection({ state: "offline", detail: `Erro HTTP ${err.status ?? ""}` });
-      } else {
-        setConnection({ state: "offline", detail: "Erro desconhecido" });
-      }
+      setConnection(connectionFromError(err));
     }
   }, [serverUrl]);
 
@@ -50,42 +70,38 @@ export default function App() {
     connect();
   }, [connect]);
 
+  function renderPage() {
+    switch (page) {
+      case "overview":
+        return (
+          <Overview
+            serverState={toServerState(connection)}
+            serverHealth={serverHealth}
+            onRetry={connect}
+          />
+        );
+      case "activity":
+        return <Activity />;
+      case "servers":
+        return <PlaceholderPage title="Servidores" />;
+      case "settings":
+        return <PlaceholderPage title="Configurações" />;
+      default:
+        return <PlaceholderPage title={page} />;
+    }
+  }
+
   return (
-    <div className="app">
-      <Header />
+    <div className="app-shell">
+      <Sidebar active={page} onSelect={setPage} />
 
-      <div className="status-section">
-        <ConnectionStatus
-          label="Status do servidor"
-          state={connection.state}
-          detail={connection.detail}
-          version={serverHealth?.timestamp}
+      <div className="app-main">
+        <Header
+          serverUrl={serverUrl}
+          connection={connection}
+          notification={{ unreadCount }}
         />
-
-        <ConnectionStatus label="Status do cliente" state="online" />
-      </div>
-
-      {connection.state === "offline" && (
-        <div className="status-card">
-          <div className="error-message">
-            Servidor indisponível
-            {connection.detail ? ` (${connection.detail})` : ""}
-          </div>
-          <button className="retry-button" onClick={connect}>
-            Tentar novamente
-          </button>
-        </div>
-      )}
-
-      <div className="config-section">
-        <label htmlFor="server-url">URL do servidor</label>
-        <input
-          id="server-url"
-          className="config-input"
-          type="text"
-          value={serverUrl}
-          readOnly
-        />
+        {renderPage()}
       </div>
     </div>
   );

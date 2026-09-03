@@ -163,3 +163,85 @@ describe("ApiClient.getVersion", () => {
     await expect(client.getVersion()).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+describe("ApiClient.getEvents", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const validEvent = {
+    id: "evt-1",
+    source: "system",
+    account: "development",
+    type: "info",
+    author: { name: "The Center" },
+    timestamp: "2026-09-02T12:00:00Z",
+    content: {
+      title: "Servidor online",
+      body: "The Center server is online",
+    },
+    metadata: {},
+    importance: "medium",
+    read: false,
+  };
+
+  it("returns the events for a valid server", async () => {
+    mockFetch(() => Promise.resolve(jsonResponse({ items: [validEvent] })));
+
+    const client = new ApiClient("http://server:3000");
+    const result = await client.getEvents();
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toEqual(validEvent);
+  });
+
+  it("returns an empty list when there are no events", async () => {
+    mockFetch(() => Promise.resolve(jsonResponse({ items: [] })));
+
+    const client = new ApiClient("http://server:3000");
+    const result = await client.getEvents();
+
+    expect(result.items).toEqual([]);
+  });
+
+  it("throws a ValidationError for a body without items", async () => {
+    mockFetch(() => Promise.resolve(jsonResponse({})));
+
+    const client = new ApiClient("http://server:3000");
+    await expect(client.getEvents()).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("throws a ValidationError for an event with invalid importance", async () => {
+    mockFetch(() =>
+      Promise.resolve(
+        jsonResponse({ items: [{ ...validEvent, importance: "normal" }] }),
+      ),
+    );
+
+    const client = new ApiClient("http://server:3000");
+    await expect(client.getEvents()).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("throws a ValidationError for an event without content.body", async () => {
+    mockFetch(() =>
+      Promise.resolve(
+        jsonResponse({ items: [{ ...validEvent, content: { title: "x" } }] }),
+      ),
+    );
+
+    const client = new ApiClient("http://server:3000");
+    await expect(client.getEvents()).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("throws a NetworkError when the server is unreachable", async () => {
+    mockFetch(() => Promise.reject(new TypeError("fetch failed")));
+
+    const client = new ApiClient("http://unreachable:3000");
+    await expect(client.getEvents()).rejects.toBeInstanceOf(NetworkError);
+  });
+});

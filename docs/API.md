@@ -2,9 +2,8 @@
 
 Contrato de comunicação entre o desktop e o servidor.
 
-> O backend **ainda não está implementado** (a ser desenvolvido em outro
-> repositório/OpenCode). Este documento define o contrato que o servidor deverá
-> cumprir. O Desktop já consome estes endpoints conforme descrito abaixo.
+> Este documento define o contrato que o servidor cumpre. O Desktop já consome
+> estes endpoints conforme descrito abaixo.
 
 ## Base URL
 
@@ -12,7 +11,7 @@ A URL base do servidor vem de **`VITE_SERVER_URL`** (variável de ambiente do de
 Para desenvolvimento, o padrão (definido em `packages/shared`) é:
 
 ```
-http://localhost:3000
+http://localhost:4000
 ```
 
 Todas as rotas são prefixadas com `/api/v1`.
@@ -28,15 +27,40 @@ Desktop (tela de status).
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "timestamp": "2026-09-02T12:00:00Z",
+  "uptime": 42,
+  "startedAt": "2026-09-02T11:59:18Z"
 }
 ```
 
 `status` pode ser `"ok"`, `"degraded"` ou `"down"`.
 
-`timestamp` é **opcional** (`string` ISO 8601). O Desktop valida a resposta e aceita
-apenas `status` entre os valores válidos; qualquer outra forma é tratada como
-"resposta inválida".
+`timestamp` é **obrigatório** (`string` ISO 8601, não-vazia). `uptime` e
+`startedAt` são opcionais. O cliente valida a resposta: `status` deve estar entre
+os valores válidos e `timestamp` deve ser uma string não-vazia; qualquer outra
+forma é tratada como "resposta inválida".
+
+### `GET /api/v1/events`
+
+Lista os eventos digitais canônicos, ordenados por `timestamp` decrescente.
+
+**Query params:**
+
+| Param | Tipo | Padrão | Descrição |
+|-------|------|--------|-----------|
+| `limit` | `int` | `50` | Máximo de itens retornados (limite global: `50`) |
+| `offset` | `int` | `0` | Quantos eventos pular do início |
+
+**Resposta 200:**
+
+```json
+{
+  "items": [  /* DigitalEvent[] canônico, ver abaixo */ ]
+}
+```
+
+**Resposta 500 (erro de banco):** `ApiError` estruturado.
 
 ### `GET /api/v1/version`
 
@@ -53,18 +77,18 @@ Retorna a versão do servidor.
 
 ## Tipo Compartilhado: DigitalEvent
 
-A futura API de eventos deve entregar objetos compatíveis com
-`packages/api-types/src/index.ts`:
+O contrato canônico de evento é definido em `packages/api-types/src/index.ts`
+e é o formato real entregue por `GET /api/v1/events`:
 
 ```json
 {
   "id": "uuid",
-  "source": "gmail",
-  "account": "user@example.com",
-  "type": "message",
-  "author": { "name": "Alice", "avatar": "url-opcional" },
+  "source": "system",
+  "account": "development",
+  "type": "info",
+  "author": { "name": "The Center", "avatar": null },
   "timestamp": "2026-09-02T12:00:00Z",
-  "content": { "title": "...", "body": "...", "url": "url-opcional" },
+  "content": { "title": "Servidor online", "body": "The Center server is online", "url": null },
   "metadata": {},
   "importance": "medium",
   "read": false
@@ -81,10 +105,12 @@ Campos:
 | `type` | enum | sim | message, notification, alert, update, error, info |
 | `author` | objeto | sim | `{ name, avatar? }` |
 | `timestamp` | `string` (ISO8601) | sim | Momento do evento |
-| `content` | objeto | sim | `{ title, body, url? }` |
+| `content` | objeto | sim | `{ title?, body, url? }` (`body` obrigatório) |
 | `metadata` | objeto | sim | Dados adicionais |
 | `importance` | enum | sim | low, medium, high, critical |
 | `read` | `boolean` | sim | Status de leitura |
+
+`avatar`, `content.title` e `content.url` podem ser `null` quando ausentes.
 
 ## Comportamento do Desktop (Fluxo de Conexão)
 
@@ -105,6 +131,13 @@ Estados da tela de conexão:
 | `connecting` | Verificando conexão... |
 | `online` | Servidor conectado |
 | `offline` | Servidor indisponível |
+
+Ao conectar, o Dashboard também busca os eventos recentes e de atividade via
+`GET /api/v1/events`. O `unreadCount` exibido no Header é derivado dos eventos
+recebidos (contagem de `read === false`). Estados de **carregando**, **erro de
+conexão** e **lista vazia** são tratados na interface.
+
+A URL padrão oficial é `http://localhost:4000` (sem reintroduzir a porta 3000).
 
 ## Cliente HTTP
 

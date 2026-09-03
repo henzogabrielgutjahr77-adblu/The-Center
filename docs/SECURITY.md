@@ -26,7 +26,7 @@ não-sensível). Isto fica no `localStorage` da WebView.
 ## Comunicação
 
 - A comunicação com o backend será realizada via **HTTPS/TLS** em produção.
-- Para desenvolvimento, usa-se HTTP local (`http://localhost:3000`).
+- Para desenvolvimento, usa-se HTTP local (`http://localhost:4000`).
 
 ## Criptografia
 

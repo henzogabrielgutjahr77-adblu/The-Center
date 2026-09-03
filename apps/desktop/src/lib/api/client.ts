@@ -1,4 +1,12 @@
-import type { HealthResponse, VersionResponse } from "@the-center/api-types";
+import type {
+  EventListResponse,
+  DigitalEvent,
+  EventSource,
+  EventType,
+  HealthResponse,
+  Importance,
+  VersionResponse,
+} from "@the-center/api-types";
 import {
   ApiError,
   NetworkError,
@@ -82,6 +90,21 @@ export class ApiClient {
       validateVersionResponse,
     );
   }
+
+  async getEvents(
+    options: RequestOptions & { limit?: number; offset?: number } = {},
+  ): Promise<EventListResponse> {
+    const { timeoutMs, limit, offset } = options;
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.set("limit", String(limit));
+    if (offset !== undefined) params.set("offset", String(offset));
+    const qs = params.toString();
+    return this.request(
+      `/api/v1/events${qs ? `?${qs}` : ""}`,
+      { timeoutMs },
+      validateEventListResponse,
+    );
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -131,4 +154,110 @@ function validateVersionResponse(body: unknown): VersionResponse {
     );
   }
   return { version, name };
+}
+
+const EVENT_SOURCES: EventSource[] = [
+  "gmail",
+  "instagram",
+  "discord",
+  "youtube",
+  "github",
+  "server",
+  "system",
+];
+
+const EVENT_TYPES: EventType[] = [
+  "message",
+  "notification",
+  "alert",
+  "update",
+  "error",
+  "info",
+];
+
+const IMPORTANCES: Importance[] = ["low", "medium", "high", "critical"];
+
+function validateEventListResponse(body: unknown): EventListResponse {
+  if (!isRecord(body)) {
+    throw new ValidationError("Invalid events response: not an object");
+  }
+  if (!Array.isArray(body.items)) {
+    throw new ValidationError("Invalid events response: items must be an array");
+  }
+  return {
+    items: body.items.map((item, i) => validateEvent(item, i)),
+  };
+}
+
+function validateEvent(value: unknown, index: number): DigitalEvent {
+  if (!isRecord(value)) {
+    throw new ValidationError(`Invalid event at index ${index}: not an object`);
+  }
+  const {
+    id,
+    source,
+    account,
+    type,
+    author,
+    timestamp,
+    content,
+    metadata,
+    importance,
+    read,
+  } = value;
+
+  if (typeof id !== "string" || !id) {
+    throw new ValidationError(`Invalid event at index ${index}: id must be a non-empty string`);
+  }
+  if (typeof source !== "string" || !EVENT_SOURCES.includes(source as EventSource)) {
+    throw new ValidationError(`Invalid event at index ${index}: source is invalid`);
+  }
+  if (typeof account !== "string") {
+    throw new ValidationError(`Invalid event at index ${index}: account must be a string`);
+  }
+  if (typeof type !== "string" || !EVENT_TYPES.includes(type as EventType)) {
+    throw new ValidationError(`Invalid event at index ${index}: type is invalid`);
+  }
+  if (typeof timestamp !== "string" || !timestamp) {
+    throw new ValidationError(`Invalid event at index ${index}: timestamp must be a non-empty string`);
+  }
+  if (typeof importance !== "string" || !IMPORTANCES.includes(importance as Importance)) {
+    throw new ValidationError(`Invalid event at index ${index}: importance is invalid`);
+  }
+  if (typeof read !== "boolean") {
+    throw new ValidationError(`Invalid event at index ${index}: read must be a boolean`);
+  }
+  if (!isRecord(content) || typeof content.body !== "string") {
+    throw new ValidationError(`Invalid event at index ${index}: content.body must be a string`);
+  }
+
+  return {
+    id,
+    source: source as EventSource,
+    account,
+    type: type as EventType,
+    author: validateEventAuthor(author, index),
+    timestamp,
+    content: {
+      ...(content.title != null ? { title: content.title as string } : {}),
+      body: content.body as string,
+      ...(content.url != null ? { url: content.url as string } : {}),
+    },
+    metadata: (isRecord(metadata) ? metadata : {}) as Record<string, unknown>,
+    importance: importance as Importance,
+    read: read as boolean,
+  };
+}
+
+function validateEventAuthor(
+  value: unknown,
+  index: number,
+): { name: string; avatar?: string | null } {
+  if (!isRecord(value) || typeof value.name !== "string") {
+    throw new ValidationError(`Invalid event at index ${index}: author.name must be a string`);
+  }
+  return {
+    name: value.name,
+    ...(value.avatar != null ? { avatar: value.avatar as string } : {}),
+  };
 }

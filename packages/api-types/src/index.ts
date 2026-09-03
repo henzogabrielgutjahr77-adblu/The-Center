@@ -91,15 +91,15 @@ export interface DigitalEvent {
   /** Autor/pessoa ou entidade que originou o conteúdo. */
   author: {
     name: string;
-    avatar?: string;
+    avatar?: string | null;
   };
   /** Timestamp ISO-8601 de quando o evento ocorreu (UTC). */
   timestamp: string;
   /** Conteúdo principal do evento. */
   content: {
-    title: string;
+    title?: string | null;
     body: string;
-    url?: string;
+    url?: string | null;
   };
   /** Metadados opcionais específicos da origem. */
   metadata: DigitalEventMetadata;
@@ -139,11 +139,20 @@ export interface VersionResponse {
 }
 
 /**
- * Erro padronizado retornado pela API.
- * Estrutura consistente para qualquer falha tratada.
+ * Resposta de erro estruturada (JSON), usada pelo servidor em casos de falha.
+ * Compartilhada para que o cliente possa tipar respostas de erro de forma
+ * consistente com o middleware de tratamento de erros.
  */
 export interface ApiError {
   error: string;
   message: string;
   statusCode: number;
+}
+
+/**
+ * Resposta de GET /api/v1/events.
+ * Lista de DigitalEvents canônicos, ordenados por timestamp (decrescente).
+ */
+export interface EventListResponse {
+  items: DigitalEvent[];
 }

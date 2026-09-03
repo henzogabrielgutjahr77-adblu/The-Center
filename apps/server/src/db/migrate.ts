@@ -27,6 +27,8 @@ const migrationsDir = join(dirname(fileURLToPath(import.meta.url)), 'migrations'
 const KNOWN_FILES = new Set([
   '001_initial_schema.up.sql',
   '001_initial_schema.down.sql',
+  '002_digital_events_structured.up.sql',
+  '002_digital_events_structured.down.sql',
 ]);
 
 export interface MigrationRecord {
