@@ -1,0 +1,28 @@
+# Compose de DESENVOLVIMENTO apenas para o PostgreSQL do The Center.
+# Não interferir em serviços existentes do servidor.
+#
+# Os valores abaixo são para desenvolvimento local. A produção usará
+# variáveis de ambiente fornecidas fora deste arquivo.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: the-center-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-thecenter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-thecenter_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-thecenter}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-thecenter} -d ${POSTGRES_DB:-thecenter}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+    name: the-center-postgres-data

@@ -92,16 +92,29 @@ function validateHealthResponse(body: unknown): HealthResponse {
   if (!isRecord(body)) {
     throw new ValidationError("Invalid health response: not an object");
   }
-  const { status, timestamp } = body;
+  const { status, timestamp, uptime, startedAt } = body;
   if (status !== "ok" && status !== "degraded" && status !== "down") {
     throw new ValidationError(
       "Invalid health response: status must be 'ok', 'degraded' or 'down'",
     );
   }
-  if (timestamp !== undefined && typeof timestamp !== "string") {
-    throw new ValidationError("Invalid health response: timestamp must be a string");
+  if (typeof timestamp !== "string" || !timestamp) {
+    throw new ValidationError(
+      "Invalid health response: timestamp must be a non-empty string",
+    );
   }
-  return { status, timestamp: timestamp as string | undefined };
+  if (uptime !== undefined && typeof uptime !== "number") {
+    throw new ValidationError("Invalid health response: uptime must be a number");
+  }
+  if (startedAt !== undefined && typeof startedAt !== "string") {
+    throw new ValidationError("Invalid health response: startedAt must be a string");
+  }
+  return {
+    status,
+    timestamp,
+    ...(uptime !== undefined ? { uptime } : {}),
+    ...(startedAt !== undefined ? { startedAt } : {}),
+  };
 }
 
 function validateVersionResponse(body: unknown): VersionResponse {
@@ -112,8 +125,10 @@ function validateVersionResponse(body: unknown): VersionResponse {
   if (typeof version !== "string" || !version) {
     throw new ValidationError("Invalid version response: version must be a non-empty string");
   }
-  if (name !== undefined && typeof name !== "string") {
-    throw new ValidationError("Invalid version response: name must be a string");
+  if (name !== "the-center-server") {
+    throw new ValidationError(
+      "Invalid version response: name must be 'the-center-server'",
+    );
   }
-  return { version, name: (name as string | undefined) ?? "" };
+  return { version, name };
 }
