@@ -1,7 +1,7 @@
 import express from 'express';
 import { createServiceRoutes, type ServiceDeps } from './routes/service.js';
 import { createEventsRoutes, type EventsDeps } from './routes/events.js';
-import { errorHandler, notFoundHandler, requestLogger } from './middleware.js';
+import { cors, errorHandler, notFoundHandler, requestLogger } from './middleware.js';
 
 export interface AppOptions {
   /** Dependências injetáveis para testes. */
@@ -20,6 +20,7 @@ export function createApp(options: AppOptions = {}): express.Express {
   app.disable('x-powered-by');
 
   app.use(express.json());
+  app.use(cors());
   app.use(requestLogger());
 
   // Endpoints raiz e versão atual da API (mesmo contrato).

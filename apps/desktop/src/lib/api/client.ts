@@ -1,3 +1,4 @@
+import { fetch } from "@tauri-apps/plugin-http";
 import type {
   EventListResponse,
   DigitalEvent,
@@ -23,8 +24,8 @@ interface RequestOptions {
 /**
  * A small, isolated HTTP client for communicating with The Center server.
  *
- * It centralizes error handling (network, timeout, non-2xx, invalid body)
- * so that `fetch()` is never spread across the React components.
+ * Uses the Tauri HTTP plugin (reqwest via Rust) to bypass WebView2 network
+ * restrictions that block fetch on Windows.
  */
 export class ApiClient {
   constructor(

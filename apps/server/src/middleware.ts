@@ -60,3 +60,38 @@ export function requestLogger(): RequestHandler {
     next();
   };
 }
+
+/**
+ * Middleware de CORS restritivo e mínimo.
+ *
+ * Autoriza unicamente a origem do Desktop Tauri (`http://tauri.localhost`).
+ * Não usa `*`, não libera origens arbitrárias e não habilita credenciais.
+ * Opera apenas com os métodos necessários para o estado atual do projeto.
+ */
+export function cors(): RequestHandler {
+  return (req, res, next) => {
+    const origin = req.headers.origin;
+
+    if (origin === ALLOWED_ORIGIN) {
+      res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);
+      res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
+
+      if (req.headers['access-control-request-private-network']) {
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+      }
+
+      if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+    }
+
+    next();
+  };
+}
+
+const ALLOWED_ORIGIN = 'http://tauri.localhost';
+const ALLOWED_METHODS = 'GET, HEAD, OPTIONS';
+const ALLOWED_HEADERS = 'Accept';
